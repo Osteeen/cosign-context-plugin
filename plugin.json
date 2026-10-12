@@ -1,0 +1,14 @@
+{
+  "name": "cosign",
+  "displayName": "Cosign",
+  "version": "0.1.0",
+  "description": "Integrate and consume the APIMatic-generated Cosign Agent API SDK — bundled skills for C#/.NET, Python, TypeScript.",
+  "license": "MIT",
+  "homepage": "https://github.com/Osteeen/cosign",
+  "repository": "https://github.com/Osteeen/cosign",
+  "skills": [
+    "./skills/dotnet",
+    "./skills/python",
+    "./skills/typescript"
+  ]
+}
