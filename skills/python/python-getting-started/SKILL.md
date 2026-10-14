@@ -32,7 +32,7 @@ Verified against `cosign_agent_api/` and `pyproject.toml` of the generated packa
 | Runtime dependencies | `httpx2 (>=2.13.1,<3.0.0)` · `certifi (>=2024.7.4)` · `pydantic[email] (>=2.11.0,<3.0.0)` · `typing-extensions (>=4.13.0,<5.0.0)` |
 | Typing | ships `py.typed`; the package is checked under `mypy --strict` with `warn_unreachable`. Callers get full inference — **a type error against this SDK is a real contract violation, not noise** |
 | Line length / lint | `ruff`, 120 cols (only relevant when editing the SDK itself) |
-| Surface | 6 operations across 4 controllers · 24 models · 0 unions · 9 enums · 6 per-operation error unions |
+| Surface | 6 operations across 4 controllers · 25 models · 0 unions · 10 enums · 6 per-operation error unions |
 
 The table above is **orientation, not a copy-paste recipe** — it gives you the names and facts (install, import roots, the auth *pattern*, the base-URL knob), while the actual integration code comes from the companion skills. Load each one as you reach its step (see **Integration workflow** below) and confirm its types against the installed package.
 
