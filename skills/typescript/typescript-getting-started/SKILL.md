@@ -33,7 +33,7 @@ Verified against `package.json` and `sdk-map.md` of the generated package at ver
 | Runtime dependency | `zod` (`^4.1.0`), imported as `zod/v4-mini` — the only one |
 | Module format | dual ESM + CommonJS folder dialects (`dist/esm`, `dist/commonjs`) behind one export |
 | Typing | the package ships its own `.d.ts` and is generated under strict TypeScript. Callers get full inference — **a type error against this SDK is a real contract violation, not noise** |
-| Surface | 5 operations · 3 resources · 16 models · 8 open enums · 5 per-operation error subclasses |
+| Surface | 6 operations · 4 resources · 24 models · 9 open enums · 6 per-operation error subclasses |
 
 The table above is **orientation, not a copy-paste recipe** — it gives you the names and facts (install, import specifier, the auth *pattern*, the base-URL knob), while the actual integration code comes from the companion skills. Load each one as you reach its step (see **Integration workflow** below) and confirm its types against the installed package.
 
@@ -55,7 +55,7 @@ Do not vendor its `src/` into your project, point `tsconfig` `paths` at a throwa
 
 ## Imports — one entry, and only one
 
-**Every** public name is re-exported from the package root — the client, `ClientOptions`, 24 model types with the schema value beside each, the error classes, and the runtime types (`ApiPromise`, `ApiResult`, `RequestOptions`, `RetryOptions`, `RequestRetryOptions`, `ErrorPayload`, `Declared`, `Schema`, `EnumSchema`, `Encoded`).
+**Every** public name is re-exported from the package root — the client, `ClientOptions`, 33 model types with the schema value beside each, the error classes, and the runtime types (`ApiPromise`, `ApiResult`, `RequestOptions`, `RetryOptions`, `RequestRetryOptions`, `ErrorPayload`, `Declared`, `Schema`, `EnumSchema`, `Encoded`).
 
 ```ts
 import { CosignAgentApiClient, ApiError, CosignAgentApiError } from "cosign-agent-api";
@@ -86,7 +86,7 @@ Consequences to state on every contract sheet that touches configuration:
 
 ## Auth pattern (2 schemes)
 
-Authentication is **per operation**: every operation declares the requirement it enforces and the SDK sends exactly that. Each block on a map page carries an **Auth** bullet, `none` included. There is no client-global switch and no per-call override. 5 of the 5 operations require a credential and 0 are public.
+Authentication is **per operation**: every operation declares the requirement it enforces and the SDK sends exactly that. Each block on a map page carries an **Auth** bullet, `none` included. There is no client-global switch and no per-call override. 6 of the 6 operations require a credential and 0 are public.
 
 | `ClientOptions` field | Scheme kind | What the SDK sends |
 | --- | --- | --- |
@@ -118,6 +118,7 @@ Resources are **memoized lazy getters** on the client (`client.<attr>`). Their c
 | --- | --- | --- | --- |
 | `client.authentication` | `Authentication` | 1 | `createToken` |
 | `client.agent` | `Agent` | 1 | `getAllowance` |
+| `client.products` | `Products` | 1 | `findProducts` |
 | `client.spendRequests` | `SpendRequests` | 3 | `createSpendRequest` · `getSpendRequest` · `listSpendRequests` |
 
 Every operation has the same call shape — `op(request, options?)`, one **flat, channel-blind** request object first and `RequestOptions` (`{ signal, retry, logging }`) second — and returns `ApiPromise<T, E>`.
@@ -208,7 +209,7 @@ Beyond the usual signatures and model members, a contract sheet for the Cosign A
 3. **The exact request type name per operation**, taken from the **Signature** bullet.
 4. **Every request field with its channel, wire name and default**, because the request object is flat and channel-blind and the SDK fans fields out. An omitted field that has a default is still sent with that default, so a defaulted header shapes the response whether or not the sheet mentions it. The generator injects an `Idempotency-Key` on every non-GET operation that does not declare that header itself — minted once per call and invisible to you. Every retry of that call re-sends the **same** key, which is what makes naming a write in `httpMethodsToRetry` safe where the provider deduplicates on it; but the next call mints a new one, so a call your own code repeats is two submissions. Any caller-supplied idempotency or request-id field is the only idempotency that spans calls, and `RequestOptions` is `{ signal, retry, logging }` only.
 5. **Required vs optional vs required-nullable** for every model member the task sets — `f: T` required, `f?: T` omit the key, `f: T | null` required and nullable. And that under `exactOptionalPropertyTypes` an absent optional is **omitted or spread**, never assigned `undefined`.
-6. **The error arms for each operation in scope, with the status each covers — and the warning that arm tags are schema-derived, not status codes.** Every operation rejects with its own `ApiError` subclass narrowed on `err.payload.kind`, and a tag comes from the arm's **body schema**: an arm whose body is a direct model reference is named after that model in lower camel (`"validationError"`), and every other body — a primitive, an array, a map, or no content — is named `"error{Status}"` (`"error400"`, `"error4XX"`, `"errorDefault"`), with a numeric suffix on the second of two arms that would otherwise land on the same name. The same tag means different statuses on different operations, and the same status carries different tags — so a tag is only meaningful beside the arm table it came from, and a shared helper that switches on `kind` across operations is a bug. 5 of 5 operations declare typed error bodies; the rest reject with the base `ApiError`. Every operation also carries an always-present `"undeclared"` arm holding `rawBody: ArrayBuffer`, for which **matcher precedence** matters: an exact numeric status is looked up across the whole table first, then the first covering range, and last a `"default"` arm where the spec declared one — whose body, if it does not fit, falls to `"undeclared"` rather than throwing.
+6. **The error arms for each operation in scope, with the status each covers — and the warning that arm tags are schema-derived, not status codes.** Every operation rejects with its own `ApiError` subclass narrowed on `err.payload.kind`, and a tag comes from the arm's **body schema**: an arm whose body is a direct model reference is named after that model in lower camel (`"validationError"`), and every other body — a primitive, an array, a map, or no content — is named `"error{Status}"` (`"error400"`, `"error4XX"`, `"errorDefault"`), with a numeric suffix on the second of two arms that would otherwise land on the same name. The same tag means different statuses on different operations, and the same status carries different tags — so a tag is only meaningful beside the arm table it came from, and a shared helper that switches on `kind` across operations is a bug. 6 of 6 operations declare typed error bodies; the rest reject with the base `ApiError`. Every operation also carries an always-present `"undeclared"` arm holding `rawBody: ArrayBuffer`, for which **matcher precedence** matters: an exact numeric status is looked up across the whole table first, then the first covering range, and last a `"default"` arm where the spec declared one — whose body, if it does not fit, falls to `"undeclared"` rather than throwing.
 7. **That a malformed or drifted 2xx body rejects with `DecodeError`, not `ApiError`, in both response modes** — `.asApiResult()` converts an HTTP error status, never any other failure. Any sheet row for a call whose result is used must name the members the implementer has to assert on, because a thin or truncated body decodes without complaint and the hole surfaces later.
 8. **The retry policy this integration needs.** Retrying is on by default — `ClientOptions.retry` sets it for the client and `RequestOptions.retry` overrides it per call — so the sheet says whether the defaults fit, which writes (if any) join `httpMethodsToRetry`, since a write is repeated only when the policy names its method, and the per-attempt timeout.
 9. **The logging this integration needs.** Logging is off by default — `ClientOptions.logging` sets it for the client and `RequestOptions.logging` sets one call's level — so the sheet says whether it stays off and, where it is on, the level, the logger, and whether headers and the request body are logged: a JSON request body is logged verbatim, with no redaction.

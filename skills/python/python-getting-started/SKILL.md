@@ -32,7 +32,7 @@ Verified against `cosign_agent_api/` and `pyproject.toml` of the generated packa
 | Runtime dependencies | `httpx2 (>=2.13.1,<3.0.0)` · `certifi (>=2024.7.4)` · `pydantic[email] (>=2.11.0,<3.0.0)` · `typing-extensions (>=4.13.0,<5.0.0)` |
 | Typing | ships `py.typed`; the package is checked under `mypy --strict` with `warn_unreachable`. Callers get full inference — **a type error against this SDK is a real contract violation, not noise** |
 | Line length / lint | `ruff`, 120 cols (only relevant when editing the SDK itself) |
-| Surface | 5 operations across 3 controllers · 16 models · 0 unions · 8 enums · 5 per-operation error unions |
+| Surface | 6 operations across 4 controllers · 24 models · 0 unions · 9 enums · 6 per-operation error unions |
 
 The table above is **orientation, not a copy-paste recipe** — it gives you the names and facts (install, import roots, the auth *pattern*, the base-URL knob), while the actual integration code comes from the companion skills. Load each one as you reach its step (see **Integration workflow** below) and confirm its types against the installed package.
 
@@ -124,6 +124,7 @@ Controllers and their operation counts (`client.<attr>`):
 | --- | --- | --- | --- |
 | `client.agent` | `Agent` / `AsyncAgent` | 1 | `get_allowance` |
 | `client.authentication` | `Authentication` / `AsyncAuthentication` | 1 | `create_token` |
+| `client.products` | `Products` / `AsyncProducts` | 1 | `find_products` |
 | `client.spend_requests` | `SpendRequests` / `AsyncSpendRequests` | 3 | `create_spend_request` · `get_spend_request` · `list_spend_requests` |
 
 Every controller has an `Async…` peer whose operations are identical in name and parameters and differ solely by being awaited. Do not emit a separate row for an async operation; state the rule once on the sheet.
@@ -211,9 +212,9 @@ Beyond the usual signatures and model members, a Python sheet is incomplete with
 3. **Every operation returns a payload** — no operation in this SDK returns `None`, so the `with_raw_response` peer is needed only where the status code itself matters.
 4. **Required vs `UNSET`** for every model member the task sets, and the fact that `Optional[T]` here is `T | UnsetType` — **not** `typing.Optional`, so `None` is not a legal value for it.
 5. **The `ApiError.error` union** for each operation in scope — there is **one** typed error body in this SDK, so the union is never uniform. Every union is `<Typed> | RawError`:
-   1. `Problem` — 5 operations (`agent.get_allowance` · `authentication.create_token` · `spend_requests.create_spend_request` · `spend_requests.get_spend_request` · `spend_requests.list_spend_requests`); distinguishing members `type_` · `title` · `status` · `code` · `detail`
-   2. So `isinstance(e.error, Problem)` matches only 5 of 5 operations.
-6. **That a decode failure raises `ValidationError`/`ValueError`, not `ApiError`, in both response modes** — `core/raw_client.py` states this in `execute`'s own docstring. **And that the 2xx path declares at least one required member on 5 return types, so a truncated body fails to decode there and passes silently everywhere else.** Any sheet row for a call whose result is used must name the members the implementer has to assert on.
+   1. `Problem` — 6 operations (`agent.get_allowance` · `authentication.create_token` · `products.find_products` · `spend_requests.create_spend_request` · `spend_requests.get_spend_request` · `spend_requests.list_spend_requests`); distinguishing members `type_` · `title` · `status` · `code` · `detail`
+   2. So `isinstance(e.error, Problem)` matches only 6 of 6 operations.
+6. **That a decode failure raises `ValidationError`/`ValueError`, not `ApiError`, in both response modes** — `core/raw_client.py` states this in `execute`'s own docstring. **And that the 2xx path declares at least one required member on 6 return types, so a truncated body fails to decode there and passes silently everywhere else.** Any sheet row for a call whose result is used must name the members the implementer has to assert on.
 7. **That retrying is on by default** — `retry_options` on the client tunes it, `max_retries` set to `0` turns it off, and `request_options` overrides it per call — so the sheet says whether this integration keeps, tunes or disables it, and for which methods, since a write is repeated only when the policy names its method.
 8. **What limits a whole call.** `timeout` limits each wait, not the call, so a reply whose pieces each arrive within it is never cut off. In async code, state the budget and the one place `asyncio.wait_for` enforces it for every call, and what the boundary returns for its `asyncio.TimeoutError`; in sync code, say there is none.
 9. **Which host the `base_url` selects**, because omitting it is silently the default.
