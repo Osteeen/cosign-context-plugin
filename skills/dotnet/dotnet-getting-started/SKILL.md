@@ -24,7 +24,7 @@ This is the **SDK-specific** entry point. For general patterns that apply to any
 | Client class | `CosignAgentApiClient` |
 | Options class | `CosignAgentApiClientOptions` |
 | Auth | HTTP **Basic** — set `AgentKey`<br>**Bearer** token — set `AgentToken` |
-| Environments | `ServerEnvironment.Production` *(default)* → `{host}/api/v1` |
+| Environments | `ServerEnvironment.Production` *(default)* → `https://cosign-rd24.onrender.com/api/v1` |
 | Log environment variable | `COSIGNAGENTAPICLIENT_LOG` |
 | Target framework | `netstandard2.0` (C# `LangVersion 14`) |
 

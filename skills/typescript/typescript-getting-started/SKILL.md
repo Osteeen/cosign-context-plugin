@@ -27,7 +27,7 @@ Verified against `package.json` and `sdk-map.md` of the generated package at ver
 | Client construction | `new CosignAgentApiClient(options: ClientOptions = {})` — the argument is optional, as is **every** field on it, so `new CosignAgentApiClient()` compiles. Fields: `serverOptions` · `retry` · `fetch` · `agentKey` · `agentToken`. `retry` is the `RetryOptions` policy; its defaults retry a GET, HEAD, PUT or OPTIONS call up to `3` times and bound each attempt by `retry.timeout` = `60_000` ms, and every one of them can be changed |
 | Auth | **HTTP Basic** — set `ClientOptions.agentKey`<br>**Bearer token** — set `ClientOptions.agentToken` |
 | Environments | no selector — one environment, so none is emitted; 1 server group |
-| Base-URL config | `serverOptions.baseUrl` (`src/servers.ts`), defaulting to `{host}/api/v1` |
+| Base-URL config | `serverOptions.baseUrl` (`src/servers.ts`), defaulting to `https://cosign-rd24.onrender.com/api/v1` |
 | Log environment variable | `COSIGN_AGENT_API_CLIENT_LOG` |
 | Node floor | `>=20.3` (`engines.node`) |
 | Runtime dependency | `zod` (`^4.1.0`), imported as `zod/v4-mini` — the only one |
@@ -76,7 +76,7 @@ This API declares one environment, so the SDK has **no environment selector** �
 
 | Group | Base URL | Override at |
 | --- | --- | --- |
-| `default` | `{host}/api/v1` | `serverOptions.baseUrl` |
+| `default` | `https://cosign-rd24.onrender.com/api/v1` | `serverOptions.baseUrl` |
 
 Consequences to state on every contract sheet that touches configuration:
 

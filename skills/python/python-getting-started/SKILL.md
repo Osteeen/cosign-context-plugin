@@ -26,7 +26,7 @@ Verified against `cosign_agent_api/` and `pyproject.toml` of the generated packa
 | Async client class | `AsyncCosignAgentApiClient` (alias `AsyncClient`) |
 | Client construction | **keyword-only**: `base_url` · `timeout` (default `30.0`) · `retry_options` · `agent_key` · `agent_token`, and the transport override — `custom_http_client` on the sync client, `custom_async_http_client` on the async one (the names differ; see step 1) |
 | Auth | HTTP **Basic** — set `agent_key` · **Bearer** token — set `agent_token` |
-| Environments | **no environment enum** — one `base_url` string, defaulting to `{host}/api/v1` |
+| Environments | **no environment enum** — one `base_url` string, defaulting to `https://cosign-rd24.onrender.com/api/v1` |
 | Base-URL config | `ServerConfig` (`cosign_agent_api/server/server_config.py`), frozen, `extra="forbid"` |
 | Python floor | **`>=3.10`** (classifiers list `3.10–3.14`) |
 | Runtime dependencies | `httpx2 (>=2.13.1,<3.0.0)` · `certifi (>=2024.7.4)` · `pydantic[email] (>=2.11.0,<3.0.0)` · `typing-extensions (>=4.13.0,<5.0.0)` |
@@ -80,15 +80,15 @@ Everything else comes from its own subpackage, and the split matters because eac
 
 ## Environments — there is no environment enum
 
-This SDK has **no environment type and no environment constants**. There is one knob: `base_url`, on `ServerConfig` (`cosign_agent_api/server/server_config.py`), and its default is **`{host}/api/v1`**:
+This SDK has **no environment type and no environment constants**. There is one knob: `base_url`, on `ServerConfig` (`cosign_agent_api/server/server_config.py`), and its default is **`https://cosign-rd24.onrender.com/api/v1`**:
 
 ```python
-base_url: str = "{host}/api/v1"
+base_url: str = "https://cosign-rd24.onrender.com/api/v1"
 ```
 
 Consequences to state on every contract sheet that touches configuration:
 
-- Omitting `base_url` gives you **`{host}/api/v1`**, silently. A caller who believes they configured a different host and did not gets that host's behaviour with live credentials.
+- Omitting `base_url` gives you **`https://cosign-rd24.onrender.com/api/v1`**, silently. A caller who believes they configured a different host and did not gets that host's behaviour with live credentials.
 - `ServerConfig` is a frozen pydantic model with `extra="forbid"`: a misspelled keyword raises `ValidationError` at construction rather than being ignored.
 - `timeout` is validated too — the base client raises `ValueError` for any non-positive value.
 
@@ -210,7 +210,9 @@ Beyond the usual signatures and model members, a Python sheet is incomplete with
 2. **The keyword-only boundary** for each operation: what is positional (path params, sometimes the body) and what sits after `*`. Every keyword-only parameter has a real default, so there is no "must pass `None` explicitly" hazard — say so, so nobody writes defensive `None`s.
 3. **Every operation returns a payload** — no operation in this SDK returns `None`, so the `with_raw_response` peer is needed only where the status code itself matters.
 4. **Required vs `UNSET`** for every model member the task sets, and the fact that `Optional[T]` here is `T | UnsetType` — **not** `typing.Optional`, so `None` is not a legal value for it.
-5. **The `ApiError.error` union** for each operation in scope — no operation in this SDK documents a typed error body, so `.error` is always `RawError`.
+5. **The `ApiError.error` union** for each operation in scope — there is **one** typed error body in this SDK, so the union is never uniform. Every union is `<Typed> | RawError`:
+   1. `Problem` — 5 operations (`agent.get_allowance` · `authentication.create_token` · `spend_requests.create_spend_request` · `spend_requests.get_spend_request` · `spend_requests.list_spend_requests`); distinguishing members `type_` · `title` · `status` · `code` · `detail`
+   2. So `isinstance(e.error, Problem)` matches only 5 of 5 operations.
 6. **That a decode failure raises `ValidationError`/`ValueError`, not `ApiError`, in both response modes** — `core/raw_client.py` states this in `execute`'s own docstring. **And that the 2xx path declares at least one required member on 5 return types, so a truncated body fails to decode there and passes silently everywhere else.** Any sheet row for a call whose result is used must name the members the implementer has to assert on.
 7. **That retrying is on by default** — `retry_options` on the client tunes it, `max_retries` set to `0` turns it off, and `request_options` overrides it per call — so the sheet says whether this integration keeps, tunes or disables it, and for which methods, since a write is repeated only when the policy names its method.
 8. **What limits a whole call.** `timeout` limits each wait, not the call, so a reply whose pieces each arrive within it is never cut off. In async code, state the budget and the one place `asyncio.wait_for` enforces it for every call, and what the boundary returns for its `asyncio.TimeoutError`; in sync code, say there is none.
